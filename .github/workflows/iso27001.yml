@@ -6,15 +6,26 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# ✅ Top-level permissions (minimal, CKV2_GHA_1 compliant)
+permissions:
+  contents: read       # read repo content
+  id-token: write      # if using OIDC
+  packages: read       # read-only for packages
+
 jobs:
   iso27001-security-checks:
     runs-on: ubuntu-latest
 
     steps:
+      # --------------------------
+      # 1️⃣ Checkout repository
+      # --------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🔒 A.8.25 – Secure Development Lifecycle (dependency & container scans)
+      # --------------------------
+      # 2️⃣ Trivy scan (dependencies + containers) – A.8.25
+      # --------------------------
       - name: Run Trivy scan (dependencies + containers)
         uses: aquasecurity/trivy-action@0.17.0
         with:
@@ -23,23 +34,38 @@ jobs:
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
 
-      # 🔒 A.8.9 – Configuration management (IaC scanning)
+      # --------------------------
+      # 3️⃣ Checkov scan (IaC Security) – A.8.9
+      # --------------------------
       - name: Run Checkov (IaC Security Scan)
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: .
+          output: json
+          quiet: true
+        id: checkov
 
-      # 🔒 A.8.28 – Secure coding (custom OPA policies)
+      # --------------------------
+      # 4️⃣ Install OPA – A.8.28
+      # --------------------------
       - name: Install OPA
         run: |
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
           chmod +x opa
           sudo mv opa /usr/local/bin/
+
+      # --------------------------
+      # 5️⃣ Run OPA policies
+      # --------------------------
       - name: Run OPA policies
         run: |
-          opa eval --data policies/technological --input deployment.json "data.security.allow"
+          mkdir -p results
+          opa eval --format json --data policies/technological --input deployment.json "data.security.allow" > results/opa_results.json
+          cat results/opa_results.json
 
-      # 🔒 A.8.32 – Change management (require approvals)
+      # --------------------------
+      # 6️⃣ Require PR approvals – A.8.32
+      # --------------------------
       - name: Require PR approvals
         if: github.event_name == 'pull_request'
         run: |
@@ -49,3 +75,12 @@ jobs:
             echo "❌ No reviewers assigned. At least 2 approvals required."
             exit 1
           fi
+
+      # --------------------------
+      # 7️⃣ Upload JSON results for Power BI
+      # --------------------------
+      - name: Upload Checkov & OPA results
+        uses: actions/upload-artifact@v3
+        with:
+          name: iso27001-results
+          path: results/
