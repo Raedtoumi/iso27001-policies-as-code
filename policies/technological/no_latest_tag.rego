@@ -1,7 +1,8 @@
 package security
 
 deny[msg] {
-    some i
-    input.containers[i].tag == "latest"
-    msg := sprintf("Container %s uses 'latest' tag", [input.containers[i].name])
+    some container
+    input.containers[container].tag == "latest"
+} if {
+    msg := sprintf("Container %s uses 'latest' tag", [input.containers[container].name])
 }

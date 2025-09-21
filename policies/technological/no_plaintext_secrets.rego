@@ -1,8 +1,8 @@
 package security
 
 deny[msg] {
-    some i
-    input.env[i] != null
-    contains(tolower(input.env[i]), "secret")
-    msg := sprintf("Environment variable contains plaintext secret: %s", [input.env[i]])
+    some env
+    re_match("(?i)secret", input.env[env])
+} if {
+    msg := sprintf("Environment variable contains potential plaintext secret: %s", [input.env[env]])
 }
