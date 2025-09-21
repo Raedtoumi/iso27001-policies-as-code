@@ -76,11 +76,13 @@ jobs:
             exit 1
           fi
 
+
       # --------------------------
       # 7️⃣ Upload JSON results for Power BI
       # --------------------------
       - name: Upload Checkov & OPA results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4   # <- updated from v3 to v4
         with:
           name: iso27001-results
           path: results/
+
