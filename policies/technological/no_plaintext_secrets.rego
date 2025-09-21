@@ -1,6 +1,5 @@
 package security
 
-# Deny if any environment variable contains the word "SECRET"
 deny[msg] {
     some i
     input.env[i] != null
