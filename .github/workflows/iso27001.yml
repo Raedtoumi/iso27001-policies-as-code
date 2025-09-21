@@ -57,12 +57,12 @@ jobs:
       # --------------------------
       # 5️⃣ Run OPA policies
       # --------------------------
+
       - name: Run OPA policies
         run: |
           mkdir -p results
-          opa eval --format json --data policies/technological --input deployment.json "data.security.allow" > results/opa_results.json || true
+          opa eval --format json --data policies/ --input deployment.json "data.security.deny" > results/opa_results.json
           cat results/opa_results.json
-
       # --------------------------
       # 6️⃣ Require PR approvals – A.8.32
       # --------------------------
