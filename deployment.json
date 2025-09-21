@@ -1,0 +1,14 @@
+{
+  "containers": [
+    {
+      "name": "web-app",
+      "image": "nginx:latest"
+    }
+  ],
+  "secrets": [
+    {
+      "name": "db-password",
+      "encrypted": false
+    }
+  ]
+}

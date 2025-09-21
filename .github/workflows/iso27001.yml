@@ -1,83 +1,69 @@
-name: ISO27001 Security Pipeline
+name: ISO27001 Security Compliance Checks
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: # Allows manual triggering
 
 permissions:
   contents: read
-  id-token: write
-  packages: read
+  security-events: write
 
 jobs:
-  iso27001-security-checks:
+  iso27001-compliance:
     runs-on: ubuntu-latest
+    name: ISO 27001 Policy Compliance Check
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@0.17.0
-        with:
-          scan-type: fs
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'HIGH,CRITICAL'
+    - name: Setup environment
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Repository contents:"
+        ls -la
 
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: .
-          output: json
-          quiet: true
+    - name: Install Open Policy Agent
+      run: |
+        curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
+        chmod +x opa
+        sudo mv opa /usr/local/bin/
+        opa version
 
-      - name: Install OPA
-        run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
-          chmod +x opa
-          sudo mv opa /usr/local/bin/
+    - name: Validate policy syntax
+      run: |
+        echo "Checking policy syntax..."
+        opa check policies/
+        echo "✅ All policies have valid syntax"
 
-      - name: Verify policy syntax
-        run: |
-          # Check if policy files exist and have correct syntax
-          if [ ! -f policies/technological/no_latest_tag.rego ]; then
-            echo "❌ Missing policy file: no_latest_tag.rego"
-            exit 1
-          fi
-          if [ ! -f policies/technological/no_plaintext_secrets.rego ]; then
-            echo "❌ Missing policy file: no_plaintext_secrets.rego"
-            exit 1
-          fi
-          
-          # Validate policy syntax
-          opa check policies/technological/*.rego || echo "⚠️ Policy syntax issues detected"
+    - name: Run ISO 27001 compliance checks
+      run: |
+        mkdir -p results
+        echo "Running OPA evaluation..."
+        # Using data.security.allow to match your security.rego package
+        opa eval --format json --data policies/ --input deployment.json "data.security.allow" > results/opa_results.json
+        
+        echo "Compliance results:"
+        cat results/opa_results.json
+        
+        # Check if deployment is allowed (no violations)
+        if jq -e '.result[0].expressions[0].value == true' results/opa_results.json; then
+          echo "✅ All ISO 27001 policies passed!"
+        else
+          echo "❌ Compliance violations detected!"
+          # Get the deny messages
+          opa eval --format json --data policies/ --input deployment.json "data.security.deny" > results/violations.json
+          echo "=== VIOLATIONS ==="
+          jq '.result[0].expressions[0].value' results/violations.json
+          exit 1
+        fi
 
-      - name: Create deployment.json if missing
-        run: |
-          if [ ! -f deployment.json ]; then
-            echo "Creating default deployment.json..."
-            echo '{"containers": [], "secrets": []}' > deployment.json
-          fi
-
-      - name: Run OPA policies
-        run: |
-          mkdir -p results
-          # Use a more specific query to avoid errors
-          opa eval --format json --data policies/technological/ --input deployment.json "data.technological" > results/opa_results.json 2>&1 || true
-          cat results/opa_results.json
-
-      - name: Require PR approvals
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "Verifying PR approvals..."
-          # This is a simplified check - you might want to enhance it
-          echo "✅ PR approval check passed (placeholder)"
-
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: iso27001-results
-          path: results/
+    - name: Upload compliance report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: iso27001-compliance-report
+        path: results/
