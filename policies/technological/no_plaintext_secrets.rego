@@ -1,8 +1,7 @@
-package security
+package technological.no_plaintext_secrets
 
 deny[msg] {
-    some env
-    re_match("(?i)secret", input.env[env])
-} if {
-    msg := sprintf("Environment variable contains potential plaintext secret: %s", [input.env[env]])
+    some secret in input.secrets
+    secret.encrypted == false
+    msg := sprintf("Secret '%s' is stored in plaintext", [secret.name])
 }
