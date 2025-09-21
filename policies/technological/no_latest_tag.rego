@@ -1,9 +1,7 @@
 package security
 
-default allow = false
-
-# Deny Docker images using :latest
-allow {
-  input.kind == "Deployment"
-  not endswith(input.spec.template.spec.containers[_].image, ":latest")
+# Deny if container image uses the "latest" tag
+deny[msg] {
+    input.image.tag == "latest"
+    msg := "Do not use 'latest' tag for container images."
 }
