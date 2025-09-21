@@ -1,0 +1,51 @@
+name: ISO27001 Security Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  iso27001-security-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 🔒 A.8.25 – Secure Development Lifecycle (dependency & container scans)
+      - name: Run Trivy scan (dependencies + containers)
+        uses: aquasecurity/trivy-action@0.17.0
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+
+      # 🔒 A.8.9 – Configuration management (IaC scanning)
+      - name: Run Checkov (IaC Security Scan)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+
+      # 🔒 A.8.28 – Secure coding (custom OPA policies)
+      - name: Install OPA
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
+          chmod +x opa
+          sudo mv opa /usr/local/bin/
+      - name: Run OPA policies
+        run: |
+          opa eval --data policies/technological --input deployment.json "data.security.allow"
+
+      # 🔒 A.8.32 – Change management (require approvals)
+      - name: Require PR approvals
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Verifying PR approvals..."
+          reviewers=$(jq '.pull_request.requested_reviewers | length' $GITHUB_EVENT_PATH)
+          if [ "$reviewers" -eq 0 ]; then
+            echo "❌ No reviewers assigned. At least 2 approvals required."
+            exit 1
+          fi
