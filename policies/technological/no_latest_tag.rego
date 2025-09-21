@@ -1,6 +1,8 @@
 package technological.no_latest_tag
 
 deny[msg] {
-    input.containers[_].image == "latest"
-    msg := "Container uses the 'latest' tag which is prohibited"
+    some i
+    container := input.containers[i]
+    endswith(container.image, ":latest")
+    msg := sprintf("Container '%s' uses prohibited 'latest' tag: %s", [container.name, container.image])
 }
