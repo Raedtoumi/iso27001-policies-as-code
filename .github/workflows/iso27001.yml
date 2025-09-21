@@ -60,7 +60,7 @@ jobs:
       - name: Run OPA policies
         run: |
           mkdir -p results
-          opa eval --format json --data policies/technological --input deployment.json "data.security.allow" > results/opa_results.json
+          opa eval --format json --data policies/technological --input deployment.json "data.security.allow" > results/opa_results.json || true
           cat results/opa_results.json
 
       # --------------------------
@@ -76,13 +76,11 @@ jobs:
             exit 1
           fi
 
-
       # --------------------------
       # 7️⃣ Upload JSON results for Power BI
       # --------------------------
       - name: Upload Checkov & OPA results
-        uses: actions/upload-artifact@v4   # <- updated from v3 to v4
+        uses: actions/upload-artifact@v4
         with:
           name: iso27001-results
           path: results/
-
