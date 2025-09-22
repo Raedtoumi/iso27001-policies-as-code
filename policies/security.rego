@@ -1,20 +1,19 @@
 package security
 
-# Import and aggregate all policy decisions
-import data.technological.no_latest_tag.deny as latest_tag_deny
-import data.technological.no_plaintext_secrets.deny as plaintext_secrets_deny
+import future.keywords.contains
+import future.keywords.if
+import future.keywords.in
 
-deny[msg] {
-    msg := latest_tag_deny[_]
+deny contains msg if {
+	some msg in data.technological.no_latest_tag.deny
 }
 
-deny[msg] {
-    msg := plaintext_secrets_deny[_]
+deny contains msg if {
+	some msg in data.technological.no_plaintext_secrets.deny
 }
 
-# Main decision rule
-default allow = false
+default allow := false
 
-allow {
-    count(deny) == 0
+allow if {
+	count(deny) == 0
 }

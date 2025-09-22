@@ -1,8 +1,10 @@
 package technological.no_plaintext_secrets
 
-deny[msg] {
-    some i
-    secret := input.secrets[i]
-    not secret.encrypted
-    msg := sprintf("Secret '%s' is stored in plaintext", [secret.name])
+import future.keywords.contains
+import future.keywords.if
+
+deny contains msg if {
+	some secret in input.secrets
+	not secret.encrypted
+	msg := sprintf("Secret '%s' is stored in plaintext", [secret.name])
 }
