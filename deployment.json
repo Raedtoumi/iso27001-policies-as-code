@@ -2,13 +2,21 @@
   "containers": [
     {
       "name": "web-app",
-      "image": "nginx:latest"
+      "image": "nginx:1.25.3"  // Changed from "latest" to specific version
+    },
+    {
+      "name": "database", 
+      "image": "postgres:13"
     }
   ],
   "secrets": [
     {
+      "name": "api-key",
+      "encrypted": true  // Changed from false to true
+    },
+    {
       "name": "db-password",
-      "encrypted": false
+      "encrypted": true
     }
   ]
 }
